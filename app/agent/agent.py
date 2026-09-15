@@ -1,6 +1,7 @@
 from llm.provider import LLMProvider
 from rag.retriever import Retriever
 from agent.planner import Planner
+from agent.state import AgentState
 
 
 class Agent:
@@ -14,20 +15,25 @@ class Agent:
         self.retriever = retriever
         self.planner = Planner(llm)
 
-    def run(self, question: str) -> str:
+    def run(self, question: str) -> AgentState:
 
+        state = AgentState(
+            question=question
+        )
         # Step 1: Ask the planner what to do
-        decision = self.planner.plan(question)
+        decision = self.planner.plan(state.question)
+
+        state.action = decision["action"]
 
         # Step 2: If retrieval is needed
-        if decision["action"] == "retrieve":
+        if state.action == "retrieve":
 
-            chunks = self.retriever.retrieve(
-                question,
+            state.chunks = self.retriever.retrieve(
+                state.question,
                 top_k=3
             )
 
-            context = "\n\n".join(chunks)
+            state.context = "\n\n".join(state.chunks)
 
             prompt = f"""
 Answer the user's question using the context below.
@@ -36,10 +42,10 @@ If the context does not contain enough information,
 say that you don't know.
 
 Context:
-{context}
+{state.context}
 
 Question:
-{question}
+{state.question}
 """
 
         else:
@@ -48,15 +54,18 @@ Question:
 Answer the following question directly.
 
 Question:
-{question}
+{state.question}
 """
 
         # Step 3: Ask the LLM
-        messages = [
+        state.messages = [
             {
                 "role": "user",
                 "content": prompt
             }
         ]
 
-        return self.llm.chat(messages)
+        state.answer = self.llm.chat(
+            state.messages
+        )
+        return state
