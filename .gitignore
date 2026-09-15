@@ -1,0 +1,26 @@
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables (secrets)
+.env
+
+# OS junk
+.DS_Store
+
+# Local databases
+*.db
+*.sqlite3
+
+# Data files you might not want tracked (optional, adjust as needed)
+# data/*.pdf
+
+# IDE
+.vscode/
+.idea/
