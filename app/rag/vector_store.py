@@ -1,5 +1,5 @@
-import faiss
-import numpy as np
+from db.database import Database
+from pgvector.psycopg import register_vector
 
 
 class VectorStore:
