@@ -11,18 +11,41 @@ class Planner:
     def plan(self, question: str) -> dict:
 
         prompt = f"""
-You are a planner for a RAG agent.
+You are the planner for an agentic RAG system.
 
-Decide whether the user's question requires
-searching the knowledge base.
+Decide what the agent should do with the user's question.
+
+Available actions:
+
+1. retrieve
+   Use this when the answer should come from
+   the user's knowledge base.
+
+2. memory
+   Use this when the answer may depend on
+   information remembered about the user
+   or previous conversations.
+
+3. answer
+   Use this when no retrieval or memory is needed.
 
 Return ONLY valid JSON.
 
-If the knowledge base is needed:
+Examples:
+
+Question:
+"What does RAG stand for?"
+
 {{"action": "retrieve"}}
 
-If the question can be answered without the
-knowledge base:
+Question:
+"What database did I choose for this project?"
+
+{{"action": "memory"}}
+
+Question:
+"Hello!"
+
 {{"action": "answer"}}
 
 User question:
@@ -47,6 +70,7 @@ User question:
         
         if decision.get("action") not in {
             "retrieve",
+            "memory"
             "answer"
         }:
             raise ValueError(
