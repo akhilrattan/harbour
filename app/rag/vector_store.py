@@ -4,49 +4,84 @@ from pgvector.psycopg import register_vector
 
 class VectorStore:
 
-    def __init__(self, dimension: int):
-        self.dimension = dimension
+    def __init__(self):
+        self.db = Database()
 
-        # FAISS index for Euclidean distance
-        self.index = faiss.IndexFlatL2(dimension)
+    def add_documents (self, source : str, content : str) -> int :
 
-        # Keep the original chunks alongside the vectors
-        self.chunks = []
-
-    def add(self, embeddings: list[list[float]], chunks: list[str]):
-        if len(embeddings) != len(chunks):
-            raise ValueError(
-                "Number of embeddings must match number of chunks"
+        with self.db.connect() as connection:
+            
+            cursor = connection.execute(
+                """
+                INSERT INTO documents(sourse,content)
+                VALUES(%s,%s)
+                RETURNING id 
+                """,
+                (source, content)
+                
             )
-        vectors = np.array(
-            embeddings,
-            dtype=np.float32
-        )
-        self.index.add(vectors)
-        self.chunks.extend(chunks)
+            document_id = cursor.fetchone()[0]
+            connection.commit()
 
-
-    def search(
+        return document_id
+        
+    def add_chunks(
         self,
-        query_embedding: list[float],
-        top_k: int = 3
-        ) -> list[str]:
-        query_vector = np.array(
-            [query_embedding],
-            dtype=np.float32
-        )
+        document_id: int,
+        chunks: list[str],
+        embeddings: list[list[float]]
+    ):
 
-        distances, indices = self.index.search(
-            query_vector,
-            top_k
-        )
-        results = []
+        if len(chunks) != len(embeddings):
+            raise ValueError(
+                "Chunks and embeddings must have the same length"
+            )
 
-        for index in indices[0]:
+        with self.db.connect() as connection:
 
-            if index == -1:
-                continue
+            register_vector(connection)
 
-            results.append(self.chunks[index])
+            for chunk, embedding in zip(
+                chunks,
+                embeddings
+            ):
+                connection.execute(
+                    """
+                    INSERT INTO chunks
+                    (document_id, content, embedding)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (
+                        document_id,
+                        chunk,
+                        embedding
+                    )
+                )
 
-        return results
+            connection.commit()
+    def search(
+            self, 
+            query_embeddings:list[str],
+            top_k = int,
+       ) -> list[str]:
+        
+        with self.db.connect as connection :
+            register_vector(connection)
+
+            cursor = connection.execute(
+                """
+                SELECT content
+                FROM chunks 
+                ORDER BY embeddings <=> %s
+                LIMIT %s
+                """,
+                (
+                    query_embeddings,
+                    top_k
+                )
+            )
+            rows = cursor.fetchall()
+        return [
+            rows[0]
+            for row in rows
+        ]
