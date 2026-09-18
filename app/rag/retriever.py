@@ -3,6 +3,7 @@ from rag.vector_store import VectorStore
 
 
 class Retriever:
+
     def __init__(
         self,
         embedder: Embedder,
@@ -16,10 +17,12 @@ class Retriever:
         query: str,
         top_k: int = 3
     ) -> list[str]:
-        query_embeddings = self.embedder.embed([query][0])
-        results = self.vector_store.search(
-            query_embeddings,
-            top_k=top_k
-        )
 
-        return results
+        query_embedding = self.embedder.embed(
+            [query]
+        )[0]
+
+        return self.vector_store.search(
+            query_embedding,
+            top_k
+        )
