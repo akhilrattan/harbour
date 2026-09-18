@@ -13,7 +13,7 @@ class VectorStore:
             
             cursor = connection.execute(
                 """
-                INSERT INTO documents(sourse,content)
+                INSERT INTO documents(source,content)
                 VALUES(%s,%s)
                 RETURNING id 
                 """,
