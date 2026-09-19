@@ -37,7 +37,8 @@ class Agent:
 
             # 1. PLAN
             decision = self.planner.plan(
-                question
+                question,
+                state.context 
             )
 
             action = decision["action"]
