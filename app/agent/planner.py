@@ -8,25 +8,43 @@ class Planner:
     def __init__(self, llm: LLMProvider):
         self.llm = llm
 
-    def plan(self, question: str, context : str = "") -> dict:
+    def plan(
+    self,
+    question: str,
+    action_history: list[str],
+    context: str
+) -> dict:
         
         prompt = f"""
 You are the planner for an agentic RAG system.
 
-Decide what the agent should do next.
+Your job is to decide what the agent should do NEXT.
 
 Available actions:
 
 1. retrieve
-   Search the knowledge base.
+   Search the knowledge base for relevant information.
 
 2. memory
-   Search persistent memory.
+   Search persistent memory for information about the
+   user or previous decisions.
 
 3. answer
-   Stop gathering information and answer.
+   Stop gathering information and produce the final answer.
 
-Previous observations:
+Important rules:
+
+- Do not repeat an action unnecessarily.
+- If useful information has already been collected,
+  you may choose answer.
+- If the question requires both user-specific memory
+  and knowledge-base information, use both.
+- Choose answer when enough information has been collected.
+
+Previous actions:
+{action_history}
+
+Information collected so far:
 {context}
 
 User question:
@@ -37,6 +55,14 @@ Return ONLY valid JSON.
 Example:
 
 {{"action": "memory"}}
+
+or:
+
+{{"action": "retrieve"}}
+
+or:
+
+{{"action": "answer"}}
 """
 
         messages = [

@@ -33,41 +33,42 @@ class Agent:
 
         for step in range(max_steps):
 
-            print(f"\n--- Agent Step {step + 1} ---")
+            print(
+                f"\n--- Agent Step {step + 1} ---"
+            )
 
+            # -------------------------
             # 1. PLAN
+            # -------------------------
+
             decision = self.planner.plan(
-                question,
-                state.context 
+                question=question,
+                action_history=state.action_history,
+                context=state.context
             )
 
             action = decision["action"]
 
             state.action = action
 
+            state.action_history.append(
+                action
+            )
+
             print("Action:", action)
 
-            # 2. ACT
-            if action == "retrieve":
+            # -------------------------
+            # 2. ANSWER
+            # -------------------------
 
-                chunks = self.retriever.retrieve(
-                    question,
-                    top_k=3
-                )
+            if action == "answer":
+                break
 
-                state.retrieved_chunks.extend(
-                    chunks
-                )
+            # -------------------------
+            # 3. MEMORY
+            # -------------------------
 
-                state.context = (
-                    "\n\n".join(
-                        state.retrieved_chunks
-                    )
-                )
-
-                print("Retrieved:", len(chunks))
-
-            elif action == "memory":
+            if action == "memory":
 
                 memories = self.memory.search(
                     question,
@@ -78,42 +79,73 @@ class Agent:
                     memories
                 )
 
-                state.context = (
-                    "\n\n".join(
-                        state.memories
-                    )
+                observation = (
+                    "Memory search returned:\n"
+                    + "\n".join(memories)
                 )
 
-                print("Memories:", len(memories))
+            # -------------------------
+            # 4. RETRIEVE
+            # -------------------------
 
-            elif action == "answer":
+            elif action == "retrieve":
 
-                break
+                chunks = self.retriever.retrieve(
+                    question,
+                    top_k=3
+                )
 
-        # 3. GENERATE FINAL ANSWER
+                state.retrieved_chunks.extend(
+                    chunks
+                )
 
-        if state.context:
+                observation = (
+                    "Knowledge-base search returned:\n"
+                    + "\n".join(chunks)
+                )
 
-            prompt = f"""
+            else:
+
+                raise ValueError(
+                    f"Unknown action: {action}"
+                )
+
+            # -------------------------
+            # 5. OBSERVE
+            # -------------------------
+
+            state.observations.append(
+                observation
+            )
+
+            state.context = "\n\n".join(
+                state.observations
+            )
+
+            print(
+                "Observation:",
+                observation[:300]
+            )
+
+        # -------------------------
+        # 6. FINAL ANSWER
+        # -------------------------
+
+        prompt = f"""
+You are the final answer generator.
+
 Answer the user's question using the
 information collected by the agent.
 
-If the information is insufficient,
+If the collected information is insufficient,
 say that you don't know.
 
 Collected information:
+
 {state.context}
 
-Question:
-{question}
-"""
+User question:
 
-        else:
-
-            prompt = f"""
-Answer the user's question directly.
-
-Question:
 {question}
 """
 

@@ -8,10 +8,26 @@ class AgentState:
 
     action: str | None = None
 
-    retrieved_chunks: list[str] = field(default_factory=list)
+    action_history: list[str] = field(
+        default_factory=list
+    )
+
+    observations: list[str] = field(
+        default_factory=list
+    )
+
+    retrieved_chunks: list[str] = field(
+        default_factory=list
+    )
+
+    memories: list[str] = field(
+        default_factory=list
+    )
 
     context: str = ""
 
     answer: str = ""
 
-    messages: list[dict] = field(default_factory=list)
+    messages: list[dict] = field(
+        default_factory=list
+    )
