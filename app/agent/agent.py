@@ -15,7 +15,6 @@ class Agent:
         retriever: Retriever,
         memory: Memory
     ):
-
         self.llm = llm
         self.retriever = retriever
         self.memory = memory
@@ -24,69 +23,85 @@ class Agent:
 
     def run(
         self,
-        question: str
+        question: str,
+        max_steps: int = 5
     ) -> AgentState:
 
         state = AgentState(
             question=question
         )
 
-        # -------------------------
-        # 1. PLAN
-        # -------------------------
+        for step in range(max_steps):
 
-        decision = self.planner.plan(
-            question
-        )
+            print(f"\n--- Agent Step {step + 1} ---")
 
-        state.action = decision["action"]
+            # 1. PLAN
+            decision = self.planner.plan(
+                question
+            )
 
-        # -------------------------
-        # 2. RETRIEVE
-        # -------------------------
+            action = decision["action"]
 
-        if state.action == "retrieve":
+            state.action = action
 
-            state.retrieved_chunks = (
-                self.retriever.retrieve(
+            print("Action:", action)
+
+            # 2. ACT
+            if action == "retrieve":
+
+                chunks = self.retriever.retrieve(
                     question,
                     top_k=3
                 )
-            )
 
-            state.context = (
-                "\n\n".join(
-                    state.retrieved_chunks
+                state.retrieved_chunks.extend(
+                    chunks
                 )
-            )
 
-        # -------------------------
-        # 3. MEMORY
-        # -------------------------
+                state.context = (
+                    "\n\n".join(
+                        state.retrieved_chunks
+                    )
+                )
 
-        elif state.action == "memory":
+                print("Retrieved:", len(chunks))
 
-            state.memories = (
-                self.memory.search(
+            elif action == "memory":
+
+                memories = self.memory.search(
                     question,
                     top_k=3
                 )
-            )
 
-            state.context = (
-                "\n\n".join(
-                    state.memories
+                state.memories.extend(
+                    memories
                 )
-            )
 
-        # -------------------------
-        # 4. BUILD PROMPT
-        # -------------------------
+                state.context = (
+                    "\n\n".join(
+                        state.memories
+                    )
+                )
 
-        if state.action == "answer":
+                print("Memories:", len(memories))
+
+            elif action == "answer":
+
+                break
+
+        # 3. GENERATE FINAL ANSWER
+
+        if state.context:
 
             prompt = f"""
-Answer the user's question directly.
+Answer the user's question using the
+information collected by the agent.
+
+If the information is insufficient,
+say that you don't know.
+
+Collected information:
+{state.context}
 
 Question:
 {question}
@@ -95,22 +110,11 @@ Question:
         else:
 
             prompt = f"""
-Answer the user's question using the
-information below.
-
-If the information is insufficient,
-say that you don't know.
-
-Information:
-{state.context}
+Answer the user's question directly.
 
 Question:
 {question}
 """
-
-        # -------------------------
-        # 5. GENERATE ANSWER
-        # -------------------------
 
         state.messages = [
             {
